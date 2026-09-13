@@ -144,6 +144,8 @@ interactively!
 Two scripts are unpacked: `dedoc-interactive` (English) and
 `dedoc-interactive-vi` (opened pages are translated to Vietnamese with
 `open --to vi`; code blocks and identifiers are preserved).
+The Vietnamese script uses `glow -p` when `glow` is installed for nicer
+Markdown rendering, and falls back to `moar` or `less` otherwise.
 
 ## Scripting support
 

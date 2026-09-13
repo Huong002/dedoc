@@ -120,6 +120,8 @@ pub(crate) fn install<Args>(mut args: Args) -> ResultS
                   as `{SCRIPT_NAME}` and `{SCRIPT_VI_NAME}`.");
   print_warning!("You'll need `skim`/`fzf` as fuzzy searcher and `moar`/`less` \
                   as a pager.");
+  print_warning!("Optional: install `glow` for nicer Markdown rendering in \
+                  `{SCRIPT_VI_NAME}`. It falls back to `moar`/`less`.");
   print_warning!("Re-run this command with `--accept` flag to unpack the scripts.");
 
   Ok(())

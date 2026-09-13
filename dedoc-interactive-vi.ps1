@@ -53,6 +53,8 @@ else
   exit 1
 }
 
+$Renderer = get-exists "glow"
+
 # Figure out dedoc's path.
 $DedocRel = './target/release/dedoc'
 $DedocDbg = './target/debug/dedoc'
@@ -91,6 +93,13 @@ while ($true)
       break
     }
 
-    invoke-expression "$Dedoc -c open $Docset $Page --to vi | $Pager"
+    if ($Renderer)
+    {
+      invoke-expression "$Dedoc open $Docset $Page --to vi | glow -p"
+    }
+    else
+    {
+      invoke-expression "$Dedoc -c open $Docset $Page --to vi | $Pager"
+    }
   }
 }

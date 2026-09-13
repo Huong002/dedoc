@@ -34,6 +34,8 @@ if test -z "${PAGER:-}"; then
   exit 1
 fi
 
+is_exists glow && RENDERER=glow
+
 # Figure out dedoc's path.
 DEDOC_REL='./target/release/dedoc'
 DEDOC_DBG='./target/debug/dedoc'
@@ -54,7 +56,11 @@ while :; do
     # shellcheck disable=SC2086
     PAGE="$("$DEDOC" -c ss "$DOCSET" --porcelain | $FZF || :)"
     test -z "$PAGE" && break
-    # shellcheck disable=SC2086
-    "$DEDOC" -c open "$DOCSET" "$PAGE" --to vi | $PAGER
+    if test -n "${RENDERER:-}"; then
+      "$DEDOC" open "$DOCSET" "$PAGE" --to vi | glow -p
+    else
+      # shellcheck disable=SC2086
+      "$DEDOC" -c open "$DOCSET" "$PAGE" --to vi | $PAGER
+    fi
   done
 done
