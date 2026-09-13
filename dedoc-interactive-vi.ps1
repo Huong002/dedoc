@@ -95,7 +95,7 @@ while ($true)
 
     if ($Renderer)
     {
-      invoke-expression "$Dedoc open $Docset $Page --to vi | glow -p"
+      invoke-expression "$Dedoc open $Docset $Page --to vi | glow | $Pager"
     }
     else
     {

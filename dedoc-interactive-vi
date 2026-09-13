@@ -57,7 +57,7 @@ while :; do
     PAGE="$("$DEDOC" -c ss "$DOCSET" --porcelain | $FZF || :)"
     test -z "$PAGE" && break
     if test -n "${RENDERER:-}"; then
-      "$DEDOC" open "$DOCSET" "$PAGE" --to vi | glow -p
+      "$DEDOC" open "$DOCSET" "$PAGE" --to vi | glow | $PAGER
     else
       # shellcheck disable=SC2086
       "$DEDOC" -c open "$DOCSET" "$PAGE" --to vi | $PAGER

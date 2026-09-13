@@ -17,7 +17,7 @@ head -n 1 < "$D"/dedoc-interactive # shebang :3
 head -n 1 < "$D"/dedoc-interactive-vi # shebang :3
 grep -- "--to vi" "$D"/dedoc-interactive-vi || log_err_and_die "vi script must translate"
 grep -- "--to vi" "$D"/dedoc-interactive && log_err_and_die "en script must stay English"
-grep -- "glow -p" "$D"/dedoc-interactive-vi || log_err_and_die "vi script must support glow"
+grep -- "glow | " "$D"/dedoc-interactive-vi || log_err_and_die "vi script must support glow"
 grep -- "glow" "$D"/dedoc-interactive && log_err_and_die "en script must not use glow"
 
 rm "$D"/dedoc-interactive "$D"/dedoc-interactive-vi
