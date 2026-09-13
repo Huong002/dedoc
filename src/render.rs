@@ -117,7 +117,7 @@ fn render_docset_with_progess(docset: &str, output_dir: &Path, page_width: usize
                                                           err)
                                                 })?;
 
-      file.write(translate_docset_html_file_to_text(entry.path(), None, page_width, false, false)?.0.as_bytes())
+      file.write(translate_docset_html_file_to_text(entry.path(), None, page_width, false, false, None)?.0.as_bytes())
         .map_err(|err| format!("Could not write to `{}`: {}", md_file_path.display(), err))?;
       let _ = file.flush();
 

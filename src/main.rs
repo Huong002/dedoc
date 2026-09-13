@@ -35,6 +35,7 @@ mod open;
 mod remove;
 mod render;
 mod search;
+mod translate;
 
 use download::download;
 use fetch::fetch;

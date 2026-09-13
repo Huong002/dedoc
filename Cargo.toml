@@ -40,3 +40,6 @@ html2text               = "0.15.1"
 terminal_size           = "0.3.0"
 # html client
 ureq                    = { version = "2.12.1", features = [ "native-certs" ] }
+# en->vi translation (phase 1: free Google GTX, no key)
+regex                   = "1"
+urlencoding             = "2"

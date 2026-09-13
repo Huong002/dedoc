@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+use std::collections::{
+  HashMap,
+  HashSet,
+};
 use std::fmt::Display;
 use std::fs::{
   File,
@@ -37,6 +41,11 @@ use sysinfo::{
   Pid,
   ProcessesToUpdate,
   System,
+};
+
+use crate::translate::{
+  TranslationConfig,
+  translate_page,
 };
 
 pub(crate) const PROGRAM_NAME: &str = "dedoc";
@@ -358,11 +367,12 @@ fn get_fragment_bounds(tagged_lines: &[TaggedLine<Vec<RichAnnotation>>],
 
 // -> (translated file as a string, whether specified fragment was found)
 pub(crate) fn translate_docset_html_file_to_text(path: PathBuf,
-                                                 fragment: Option<&String>,
-                                                 width: usize,
-                                                 number_lines: bool,
-                                                 use_colors: bool)
-                                                 -> Result<(String, bool), String>
+                                                  fragment: Option<&String>,
+                                                  width: usize,
+                                                  number_lines: bool,
+                                                  use_colors: bool,
+                                                  translation: Option<(&str, &str, &TranslationConfig)>)
+                                                  -> Result<(String, bool), String>
 {
   let mut output = String::new();
   let file =
@@ -377,6 +387,45 @@ pub(crate) fn translate_docset_html_file_to_text(path: PathBuf,
   let text_lines =
     rich_translator_config.lines_from_read(reader, actual_width)
                           .map_err(|err| format!("Failed to parse `{}`: {err}", path.display()))?;
+
+  // Phase 1 translation: collect translatable strings once for the whole
+  // page, translate in a single `translate_page` call (disk-cached), then
+  // substitute per tagged string while keeping styles. Code spans and
+  // non-alphabetic strings are skipped.
+  let translated_map: HashMap<String, String> =
+    if let Some((docset, page_id, config)) = translation {
+      let mut seen = HashSet::new();
+      let mut sources: Vec<String> = vec![];
+      for tagged_line in text_lines.iter() {
+        for tagged_string in tagged_line.tagged_strings() {
+          if tagged_string.tag
+                            .iter()
+                            .any(|a| {
+                              matches!(a,
+                                       RichAnnotation::Preformat(_) | RichAnnotation::Code)
+                            })
+          {
+            continue;
+          }
+          if tagged_string.s.trim().len() < 2 ||
+             !tagged_string.s.chars().any(|c| c.is_alphabetic())
+          {
+            continue;
+          }
+          if seen.insert(tagged_string.s.clone()) {
+            sources.push(tagged_string.s.clone());
+          }
+        }
+      }
+      if sources.is_empty() {
+        HashMap::new()
+      } else {
+        let translated = translate_page(sources.clone(), config, docset, page_id);
+        sources.into_iter().zip(translated.into_iter()).collect()
+      }
+    } else {
+      HashMap::new()
+    };
 
   let mut current_fragment_line = 0;
   let mut next_fragment_line = 0;
@@ -445,17 +494,21 @@ pub(crate) fn translate_docset_html_file_to_text(path: PathBuf,
     for tagged_string in tagged_strings {
       let style = if use_colors { get_tag_style(&tagged_string.tag) } else { "".to_string() };
 
-      if !tagged_string.s.is_empty() {
+      let text = translated_map.get(tagged_string.s.as_str())
+                               .map(|s| s.as_str())
+                               .unwrap_or(tagged_string.s.as_str());
+
+      if !text.is_empty() {
         line_is_empty = false;
       }
 
       line_buffer += style.as_str();
-      line_buffer += &tagged_string.s;
+      line_buffer += text;
 
       if is_only_tag && use_colors {
         // Pad preformat to terminal width for cool background.
         if let Some(RichAnnotation::Preformat(_)) = tagged_string.tag.first() {
-          let padding_amount = actual_width.saturating_sub(tagged_string.s.len());
+          let padding_amount = actual_width.saturating_sub(text.len());
 
           for _ in 0..padding_amount {
             line_buffer += " ";
@@ -491,24 +544,26 @@ pub(crate) fn translate_docset_html_file_to_text(path: PathBuf,
 
 // -> Ok(whether fragment was found)
 pub(crate) fn print_docset_file(path: PathBuf,
-                                fragment: Option<&String>,
-                                width: usize,
-                                number_lines: bool)
-                                -> Result<bool, String>
+                                 fragment: Option<&String>,
+                                 width: usize,
+                                 number_lines: bool,
+                                 translation: Option<(&str, &str, &TranslationConfig)>)
+                                 -> Result<bool, String>
 {
   let (output, ret) =
-    translate_docset_html_file_to_text(path, fragment, width, number_lines, true)?;
+    translate_docset_html_file_to_text(path, fragment, width, number_lines, true, translation)?;
   print!("{}", output);
   Ok(ret)
 }
 
 pub(crate) fn print_page_from_docset(docset_name: &str,
-                                     page: &str,
-                                     fragment: Option<&String>,
-                                     width: usize,
-                                     should_number_lines: bool,
-                                     should_only_show_path: bool)
-                                     -> Result<bool, String>
+                                      page: &str,
+                                      fragment: Option<&String>,
+                                      width: usize,
+                                      should_number_lines: bool,
+                                      should_only_show_path: bool,
+                                      translation: Option<&TranslationConfig>)
+                                      -> Result<bool, String>
 {
   let docset_path = get_docset_path(docset_name)?;
 
@@ -529,7 +584,11 @@ pub(crate) fn print_page_from_docset(docset_name: &str,
     return Ok(false);
   }
 
-  print_docset_file(page_path, fragment, width, should_number_lines)
+  print_docset_file(page_path,
+                    fragment,
+                    width,
+                    should_number_lines,
+                    translation.map(|config| (docset_name, page, config)))
 }
 
 fn get_home_directory() -> Result<PathBuf, String>

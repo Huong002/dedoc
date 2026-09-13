@@ -46,6 +46,7 @@ use crate::common::{
   validate_number_of_columns,
 };
 use crate::print_warning;
+use crate::translate::TranslationConfig;
 
 fn show_search_help() -> ResultS
 {
@@ -71,8 +72,12 @@ fn show_search_help() -> ResultS
                                     page.
     -c, --columns <number>          Make output N columns wide.
     -n, --line-numbers              Number outputted lines.
-    -P, --only-show-path            Print path to the page and fragment on the
-                                    second line instead of the page contents."
+     -P, --only-show-path            Print path to the page and fragment on the
+                                     second line instead of the page contents.
+         --to <lang>                 Translate opened page (phase 1: only `vi`).
+         --translator <name>         Translation provider (`google`, `lingva`).
+                                     Default is `google`.
+         --no-translation-cache      Bypass translation disk cache."
   );
   Ok(())
 }
@@ -478,7 +483,8 @@ fn print_search_results(search_results: &[ExactResult],
 
 fn search_impl(is_porcelain: bool,
                search_context: SearchContext,
-               open_options: OpenOptions)
+               open_options: OpenOptions,
+               translation: Option<&TranslationConfig>)
                -> Result<Vec<String>, String>
 {
   let SearchContext { ref docset, ref options, ref query } = search_context;
@@ -534,7 +540,8 @@ fn search_impl(is_porcelain: bool,
                                    fragment,
                                    width,
                                    open_options.line_numbers,
-                                   open_options.should_only_show_path)?;
+                                   open_options.should_only_show_path,
+                                   translation)?;
             return Ok(warnings);
           }
           n => {
@@ -544,7 +551,8 @@ fn search_impl(is_porcelain: bool,
                                    None,
                                    width,
                                    open_options.line_numbers,
-                                   open_options.should_only_show_path)?;
+                                   open_options.should_only_show_path,
+                                   translation)?;
             return Ok(warnings);
           }
         }
@@ -602,7 +610,8 @@ fn search_impl(is_porcelain: bool,
                                    fragment,
                                    width,
                                    open_options.line_numbers,
-                                   open_options.should_only_show_path)?;
+                                   open_options.should_only_show_path,
+                                   translation)?;
             return Ok(warnings);
           }
         }
@@ -634,6 +643,9 @@ pub(crate) fn search<Args>(mut args: Args) -> ResultS
   let mut flag_open_ignore_fragment;
   let mut flag_open_line_numbers;
   let mut flag_open_only_show_path;
+  let mut flag_to;
+  let mut flag_translator;
+  let mut flag_no_translation_cache;
   let mut flag_porcelain;
   let mut flag_help;
 
@@ -646,6 +658,9 @@ pub(crate) fn search<Args>(mut args: Args) -> ResultS
     flag_open_ignore_fragment: BoolFlag, ["-f", "--ignore-fragment"],
     flag_open_line_numbers: BoolFlag,    ["-n", "--line-numbers"],
     flag_open_only_show_path: BoolFlag,  ["-P", "--only-show-path"],
+    flag_to: StringFlag,                 ["--to"],
+    flag_translator: StringFlag,         ["--translator"],
+    flag_no_translation_cache: BoolFlag, ["--no-translation-cache"],
     flag_porcelain: BoolFlag,            ["--porcelain"],
     flag_help: BoolFlag,                 ["--help"]
   ];
@@ -653,6 +668,13 @@ pub(crate) fn search<Args>(mut args: Args) -> ResultS
   let args = parse_flags(&mut args, &mut flags).map_err(|err| get_flag_error(&err))?;
   if flag_help {
     return show_search_help();
+  }
+
+  if !flag_to.is_empty() && flag_to != "vi" {
+    return Err("Only `--to vi` is supported in phase 1.".to_string());
+  }
+  if !flag_translator.is_empty() && flag_translator != "google" && flag_translator != "lingva" {
+    return Err("Unknown translator. Use `google` or `lingva`.".to_string());
   }
 
   if !is_docs_json_exists()? {
@@ -708,8 +730,15 @@ pub(crate) fn search<Args>(mut args: Args) -> ResultS
                                    line_numbers: flag_open_line_numbers,
                                    should_only_show_path: flag_open_only_show_path };
 
+  let translation = if flag_to.is_empty() {
+    None
+  } else {
+    let provider = if flag_translator.is_empty() { "google" } else { flag_translator.as_str() };
+    Some(TranslationConfig::new(&flag_to, provider, flag_no_translation_cache))
+  };
+
   // Print warnings only after search results.
-  for warning in search_impl(flag_porcelain, search_options, open_options)? {
+  for warning in search_impl(flag_porcelain, search_options, open_options, translation.as_ref())? {
     print_warning!("{}", warning);
   }
 
