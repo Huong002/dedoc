@@ -141,6 +141,10 @@ Alternatively, the software comes with `install` command that unpacks a
 reference script which makes use of `skim` and `moar` to allow using `dedoc`
 interactively!
 
+Two scripts are unpacked: `dedoc-interactive` (English) and
+`dedoc-interactive-vi` (opened pages are translated to Vietnamese with
+`open --to vi`; code blocks and identifiers are preserved).
+
 ## Scripting support
 
 There is a `render` subcommand, which allows you to render the entire docset to

@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Interactive docset browser via `dedoc`.
+# Interactive docset browser via `dedoc`, translated to Vietnamese.
 #
-# List all pages from a docset, start `skim`, search for a page and open it in
-# `moar`.
+# Same as `dedoc-interactive`, but opened pages are translated with
+# `dedoc open --to vi`. Code blocks, identifiers and URLs are preserved.
+# List/search UI stays in English so page names match the index.
 
 set -eu
 
@@ -50,8 +51,10 @@ while :; do
   DOCSET="$("$DEDOC" ls -l --porcelain | $FZF)"
   test -z "$DOCSET" && break
   while :; do
+    # shellcheck disable=SC2086
     PAGE="$("$DEDOC" -c ss "$DOCSET" --porcelain | $FZF || :)"
     test -z "$PAGE" && break
-    "$DEDOC" -c open "$DOCSET" "$PAGE" | $PAGER
+    # shellcheck disable=SC2086
+    "$DEDOC" -c open "$DOCSET" "$PAGE" --to vi | $PAGER
   done
 done

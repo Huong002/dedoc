@@ -1,9 +1,10 @@
 #!/usr/bin/env powershell
 
-# Interactive docset browser via `dedoc`.
+# Interactive docset browser via `dedoc`, translated to Vietnamese.
 #
-# List all pages from a docset, start `skim`, search for a page and open it in
-# `moar`.
+# Same as `dedoc-interactive.ps1`, but opened pages are translated with
+# `dedoc open --to vi`. Code blocks, identifiers and URLs are preserved.
+# List/search UI stays in English so page names match the index.
 
 function get-exists()
 {
@@ -76,7 +77,7 @@ else
 
 while ($true)
 {
-  $Docset = "$(invoke-expression "dedoc ls -l --porcelain | $Fzf")"
+  $Docset = "$(invoke-expression "$Dedoc ls -l --porcelain | $Fzf")"
   if (!$Docset)
   {
     break
@@ -84,12 +85,12 @@ while ($true)
 
   while ($true)
   {
-    $Page = "$(invoke-expression "$Dedoc -c ss $DOCSET --porcelain | $Fzf" -ErrorAction Ignore)"
+    $Page = "$(invoke-expression "$Dedoc -c ss $Docset --porcelain | $Fzf" -ErrorAction Ignore)"
     if (!$Page)
     {
       break
     }
 
-    invoke-expression "$Dedoc -c open $Docset $Page | $Pager"
+    invoke-expression "$Dedoc -c open $Docset $Page --to vi | $Pager"
   }
 }

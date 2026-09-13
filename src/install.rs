@@ -25,6 +25,16 @@ const SCRIPT_CONTENTS: &str = include_str!("../dedoc-interactive");
 #[cfg(windows)]
 const SCRIPT_CONTENTS: &str = include_str!("../dedoc-interactive.ps1");
 
+#[cfg(unix)]
+const SCRIPT_VI_NAME: &str = "dedoc-interactive-vi";
+#[cfg(windows)]
+const SCRIPT_VI_NAME: &str = "dedoc-interactive-vi.ps1";
+
+#[cfg(unix)]
+const SCRIPT_VI_CONTENTS: &str = include_str!("../dedoc-interactive-vi");
+#[cfg(windows)]
+const SCRIPT_VI_CONTENTS: &str = include_str!("../dedoc-interactive-vi.ps1");
+
 // Embed a script that uses fzf and less, ask to upack it along the main
 // binary. A .bat wrapper is provided for Windows.
 
@@ -63,50 +73,54 @@ pub(crate) fn install<Args>(mut args: Args) -> ResultS
   let exe_path =
     std::env::current_exe().map_err(|err| format!("Could not get current path: {err}"))?;
   let exe_dir = exe_path.parent().expect("how");
-  let script_path = exe_dir.join(SCRIPT_NAME);
+
+  // Unpack both helper scripts next to the binary.
+  let scripts: [(&str, &str); 2] =
+    [(SCRIPT_NAME, SCRIPT_CONTENTS), (SCRIPT_VI_NAME, SCRIPT_VI_CONTENTS)];
 
   // Ready to unpack?
   if flag_accept {
-    let mut f = File::create(&script_path).map_err(|err| {
-                                            format!("Could not create `{}`: {err}",
-                                                    script_path.display())
-                                          })?;
-    f.write_all(SCRIPT_CONTENTS.as_bytes()).expect("file is created by self");
+    for (name, contents) in scripts {
+      let script_path = exe_dir.join(name);
+      let mut f = File::create(&script_path).map_err(|err| {
+                                              format!("Could not create `{}`: {err}",
+                                                      script_path.display())
+                                            })?;
+      f.write_all(contents.as_bytes()).expect("file is created by self");
 
-    #[cfg(unix)]
-    {
-      // Set executable permissions for the script.
+      #[cfg(unix)]
+      {
+        // Set executable permissions for the script.
 
-      use std::os::unix::fs::PermissionsExt;
-      let mut perms = f.metadata().expect("why").permissions();
-      perms.set_mode(0o755);
-      f.set_permissions(perms).expect("the file is created by self");
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = f.metadata().expect("why").permissions();
+        perms.set_mode(0o755);
+        f.set_permissions(perms).expect("the file is created by self");
+      }
+
+      f.sync_all().expect("why");
+
+      println!("{BOLD}The script was successfully unpacked to `{}` with execute \
+                permissions.{RESET}",
+               script_path.display());
     }
-
-    f.sync_all().expect("why");
-
-    println!("{BOLD}The script was successfully unpacked to `{}` with execute \
-              permissions.{RESET}",
-             script_path.display());
 
     return Ok(());
   }
 
-  // Otherwise just show the script contents.
+  // Otherwise just show the scripts' contents.
 
-  println!("```\n{}```\n", SCRIPT_CONTENTS);
+  println!("`{SCRIPT_NAME}` (English):\n```\n{SCRIPT_CONTENTS}```\n");
+  println!("`{SCRIPT_VI_NAME}` (Vietnamese, `open --to vi`):\n```\n{SCRIPT_VI_CONTENTS}```\n");
 
-  print_warning!("The binary provides an example script that allows it to become \
+  print_warning!("The binary provides example scripts that allow it to become \
                   interactive.");
-  print_warning!("Above are the contents of the script that is about to be \
+  print_warning!("Above are the contents of the scripts that are about to be \
                   unpacked in the same directory as the {PROGRAM_NAME} binary \
-                  as `{PROGRAM_NAME}-interactive` (`{}`)",
-                 &script_path.display());
-
+                  as `{SCRIPT_NAME}` and `{SCRIPT_VI_NAME}`.");
   print_warning!("You'll need `skim`/`fzf` as fuzzy searcher and `moar`/`less` \
                   as a pager.");
-
-  print_warning!("Re-run this command with `--accept` flag to unpack the script.");
+  print_warning!("Re-run this command with `--accept` flag to unpack the scripts.");
 
   Ok(())
 }
